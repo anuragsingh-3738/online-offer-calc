@@ -3,18 +3,26 @@ const SHEET_API =
 
 document.addEventListener("DOMContentLoaded", () => {
 
-let products = [];
-let cart = [];
+let products=[];
+let cart=[];
 
 
 // ===== autosave =====
-salesPerson.value = localStorage.getItem("salesPerson") || "";
-salesPerson.oninput = ()=>localStorage.setItem("salesPerson",salesPerson.value);
+salesPerson.value = localStorage.getItem("salesPerson")||"";
+salesPerson.oninput=()=>localStorage.setItem("salesPerson",salesPerson.value);
 
 
-// ===== mobile limit =====
-customerMobile.oninput = () =>
-  customerMobile.value = customerMobile.value.replace(/\D/g,'').slice(0,10);
+// ===== mobile =====
+customerMobile.oninput=()=>{
+  customerMobile.value=customerMobile.value.replace(/\D/g,'').slice(0,10);
+};
+
+
+// ===== special enable =====
+specialEnable.onchange=()=>{
+  specialAmt.disabled=!specialEnable.checked;
+  calculate();
+};
 
 
 // ===== fetch =====
@@ -22,24 +30,24 @@ fetch(SHEET_API).then(r=>r.json()).then(d=>products=d);
 
 
 // ===== search =====
-modelSearch.oninput = ()=>{
-  const val = modelSearch.value.toLowerCase();
+modelSearch.oninput=()=>{
+  const v=modelSearch.value.toLowerCase();
   suggestions.innerHTML="";
-  if(!val){suggestions.style.display="none";return;}
+  if(!v){suggestions.style.display="none";return;}
 
-  products.filter(p=>p.model.toLowerCase().includes(val))
+  products.filter(p=>p.model.toLowerCase().includes(v))
   .slice(0,20)
   .forEach(p=>{
-    const div=document.createElement("div");
-    div.className="suggItem";
-    div.innerText=`${p.model} - ₹${p.price}`;
-    div.onclick=()=>{
+    const d=document.createElement("div");
+    d.className="suggItem";
+    d.innerText=`${p.model} - ₹${p.price}`;
+    d.onclick=()=>{
       cart.push({model:p.model,price:p.price,qty:1,combo:false});
       modelSearch.value="";
       suggestions.style.display="none";
       render();
     };
-    suggestions.appendChild(div);
+    suggestions.appendChild(d);
   });
 
   suggestions.style.display="block";
@@ -49,14 +57,14 @@ modelSearch.oninput = ()=>{
 // ===== render =====
 function render(){
   cartBody.innerHTML="";
-  const selected = cart.filter(p=>p.combo).length;
+  const sel=cart.filter(p=>p.combo).length;
 
   cart.forEach((p,i)=>{
     let cb="";
     if(comboEnable.checked && p.price>=5000){
-      const disable = selected>=2 && !p.combo;
+      const dis = sel>=2 && !p.combo;
       cb=`<input type="checkbox" ${p.combo?'checked':''}
-          ${disable?'disabled':''}
+          ${dis?'disabled':''}
           onchange="toggleCombo(${i},this.checked)">`;
     }
 
@@ -64,14 +72,11 @@ function render(){
       <tr>
         <td>${cb} ${p.model}</td>
         <td>₹${p.price}</td>
-        <td>
-          <input type="number" value="${p.qty}" min="1"
-          onchange="updateQty(${i},this.value)">
-        </td>
+        <td><input type="number" value="${p.qty}" min="1"
+          onchange="updateQty(${i},this.value)"></td>
         <td>₹${p.price*p.qty}</td>
         <td><button onclick="removeItem(${i})">❌</button></td>
-      </tr>
-    `;
+      </tr>`;
   });
 
   calculate();
@@ -83,12 +88,12 @@ window.toggleCombo=(i,v)=>{cart[i].combo=v;render();};
 
 
 // ===== slab =====
-function slab(total){
-  if(total>=20000) return {web:1000,upi:500};
-  if(total>=15000) return {web:700,upi:300};
-  if(total>=13000) return {web:500,upi:300};
-  if(total>=10000) return {web:500,upi:200};
-  if(total>=5000) return {web:200,upi:100};
+function slab(t){
+  if(t>=20000) return {web:1000,upi:500};
+  if(t>=15000) return {web:700,upi:300};
+  if(t>=13000) return {web:500,upi:300};
+  if(t>=10000) return {web:500,upi:200};
+  if(t>=5000) return {web:200,upi:100};
   return {web:0,upi:0};
 }
 
@@ -98,19 +103,19 @@ function calculate(){
 
   const original = cart.reduce((s,p)=>s+p.price*p.qty,0);
 
-  let combo = 0;
+  let combo=0;
   if(comboEnable.checked){
     cart.forEach(p=>{
-      if(p.combo) combo += p.price*p.qty*0.03;
+      if(p.combo) combo+=p.price*p.qty*0.03;
     });
   }
 
-  const afterCombo = original - combo;
-  const s = slab(afterCombo);
-  const upi = paymentMode.value==="UPI" ? s.upi : 0;
-  const special = specialEnable.checked ? +specialAmt.value||0 : 0;
+  const afterCombo = original-combo;
+  const s=slab(afterCombo);
+  const upi=paymentMode.value==="UPI"?s.upi:0;
+  const special=specialEnable.checked?+specialAmt.value||0:0;
 
-  const save = combo + s.web + upi + special;
+  const save = combo+s.web+upi+special;
 
   orderValue.innerText="₹"+original.toFixed(0);
   webDisc.innerText="₹"+s.web;
@@ -118,65 +123,57 @@ function calculate(){
   totalSavings.innerText="₹"+save.toFixed(0);
   finalPay.innerText="₹"+Math.max(0,original-save).toFixed(0);
 
-  comboRow.style.display = combo>0 ? "flex":"none";
+  comboRow.style.display = combo>0?"flex":"none";
   comboDisc.innerText="₹"+Math.round(combo);
 
-  specialRow.style.display = special>0 ? "flex":"none";
+  specialRow.style.display = special>0?"flex":"none";
   specialDisc.innerText="₹"+special;
 
   upiDisc.parentElement.style.display =
     paymentMode.value==="UPI"?"flex":"none";
 
-  // fill screenshot info
   sSales.innerText=salesPerson.value;
   sCustomer.innerText=customerName.value;
   sMobile.innerText=customerMobile.value;
 }
 
 
-// ===== offer id =====
-function offerIdGen(){
-  return "HH-"+Date.now().toString().slice(-6);
-}
+// ===== id =====
+function idGen(){return "HH-"+Date.now().toString().slice(-6);}
 
 
 // ===== screenshot =====
-copyScreenshot.onclick = async ()=>{
-  offerId.innerText = offerIdGen();
-  const d = new Date(Date.now()+24*60*60*1000);
-  validTill.innerText=d.toLocaleString();
+copyScreenshot.onclick=async()=>{
+  offerId.innerText=idGen();
+  validTill.innerText=new Date(Date.now()+86400000).toLocaleString();
   calculate();
 
   html2canvas(offerArea).then(async canvas=>{
-    const blob = await new Promise(r=>canvas.toBlob(r));
-    await navigator.clipboard.write([
-      new ClipboardItem({"image/png":blob})
-    ]);
-    alert("Screenshot copied");
+    const blob=await new Promise(r=>canvas.toBlob(r));
+    await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+    alert("✅ Copied to clipboard");
   });
 };
 
 
 // ===== summary =====
 copySummary.onclick=()=>{
-  const txt=`
-Offer ID: ${offerId.innerText}
-Valid Till: ${validTill.innerText}
+  const txt=`📦 OFFER ${offerId.innerText}
+🕒 Valid: ${validTill.innerText}
 
-Sales: ${salesPerson.value}
-Customer: ${customerName.value}
-Mobile: ${customerMobile.value}
+👨‍💼 Sales: ${salesPerson.value}
+🧑 Customer: ${customerName.value}
+📱 Mobile: ${customerMobile.value}
 
-Order: ${orderValue.innerText}
-Website: ${webDisc.innerText}
-UPI: ${upiDisc.innerText}
-Combo: ${comboDisc.innerText}
-Special: ${specialDisc.innerText}
+💰 Order: ${orderValue.innerText}
+🌐 Website: ${webDisc.innerText}
+🏦 UPI: ${upiDisc.innerText}
+🎁 Combo: ${comboDisc.innerText}
+⭐ Special: ${specialDisc.innerText}
 
-Pay: ${finalPay.innerText}
-`;
+🧾 Pay: ${finalPay.innerText}`;
   navigator.clipboard.writeText(txt);
-  alert("Summary copied");
+  alert("✅ Summary copied");
 };
 
 
