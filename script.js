@@ -7,70 +7,57 @@ let products = [];
 let cart = [];
 
 
-// ================= AUTOSAVE SALES =================
-const salesInput = document.getElementById("salesPerson");
-if (salesInput) {
-  salesInput.value = localStorage.getItem("salesPerson") || "";
-  salesInput.oninput = () =>
-    localStorage.setItem("salesPerson", salesInput.value);
-}
+// ===== autosave =====
+salesPerson.value = localStorage.getItem("salesPerson") || "";
+salesPerson.oninput = ()=>localStorage.setItem("salesPerson",salesPerson.value);
 
 
-// ================= MOBILE LIMIT =================
-const mobile = document.getElementById("customerMobile");
-if (mobile) {
-  mobile.oninput = () =>
-    mobile.value = mobile.value.replace(/\D/g,'').slice(0,10);
-}
+// ===== mobile limit =====
+customerMobile.oninput = () =>
+  customerMobile.value = customerMobile.value.replace(/\D/g,'').slice(0,10);
 
 
-// ================= FETCH =================
-fetch(SHEET_API)
-  .then(r=>r.json())
-  .then(d=>products=d);
+// ===== fetch =====
+fetch(SHEET_API).then(r=>r.json()).then(d=>products=d);
 
 
-// ================= SEARCH =================
-modelSearch.addEventListener("input", ()=>{
+// ===== search =====
+modelSearch.oninput = ()=>{
   const val = modelSearch.value.toLowerCase();
   suggestions.innerHTML="";
+  if(!val){suggestions.style.display="none";return;}
 
-  if(!val){ suggestions.style.display="none"; return; }
-
-  products
-    .filter(p=>p.model.toLowerCase().includes(val))
-    .slice(0,20)
-    .forEach(p=>{
-      const div=document.createElement("div");
-      div.className="suggItem";
-      div.innerText=`${p.model} - ₹${p.price}`;
-      div.onclick=()=>{
-        cart.push({model:p.model,price:p.price,qty:1,combo:false});
-        modelSearch.value="";
-        suggestions.style.display="none";
-        render();
-      };
-      suggestions.appendChild(div);
-    });
+  products.filter(p=>p.model.toLowerCase().includes(val))
+  .slice(0,20)
+  .forEach(p=>{
+    const div=document.createElement("div");
+    div.className="suggItem";
+    div.innerText=`${p.model} - ₹${p.price}`;
+    div.onclick=()=>{
+      cart.push({model:p.model,price:p.price,qty:1,combo:false});
+      modelSearch.value="";
+      suggestions.style.display="none";
+      render();
+    };
+    suggestions.appendChild(div);
+  });
 
   suggestions.style.display="block";
-});
+};
 
 
-// ================= RENDER =================
+// ===== render =====
 function render(){
   cartBody.innerHTML="";
-
-  const comboSelected = cart.filter(p=>p.combo).length;
+  const selected = cart.filter(p=>p.combo).length;
 
   cart.forEach((p,i)=>{
-
-    let cb = "";
+    let cb="";
     if(comboEnable.checked && p.price>=5000){
-      const disabled = comboSelected>=2 && !p.combo;
-      cb = `<input type="checkbox" ${p.combo?'checked':''}
-            ${disabled?'disabled':''}
-            onchange="toggleCombo(${i},this.checked)">`;
+      const disable = selected>=2 && !p.combo;
+      cb=`<input type="checkbox" ${p.combo?'checked':''}
+          ${disable?'disabled':''}
+          onchange="toggleCombo(${i},this.checked)">`;
     }
 
     cartBody.innerHTML+=`
@@ -78,7 +65,7 @@ function render(){
         <td>${cb} ${p.model}</td>
         <td>₹${p.price}</td>
         <td>
-          <input type="number" min="1" value="${p.qty}"
+          <input type="number" value="${p.qty}" min="1"
           onchange="updateQty(${i},this.value)">
         </td>
         <td>₹${p.price*p.qty}</td>
@@ -95,7 +82,7 @@ window.removeItem=(i)=>{cart.splice(i,1);render();};
 window.toggleCombo=(i,v)=>{cart[i].combo=v;render();};
 
 
-// ================= SLAB =================
+// ===== slab =====
 function slab(total){
   if(total>=20000) return {web:1000,upi:500};
   if(total>=15000) return {web:700,upi:300};
@@ -106,91 +93,73 @@ function slab(total){
 }
 
 
-// ================= CALCULATE =================
+// ===== calc =====
 function calculate(){
 
-  const originalTotal = cart.reduce((s,p)=>s+p.price*p.qty,0);
+  const original = cart.reduce((s,p)=>s+p.price*p.qty,0);
 
-  // COMBO FIRST
-let comboDisc = 0;
+  let combo = 0;
+  if(comboEnable.checked){
+    cart.forEach(p=>{
+      if(p.combo) combo += p.price*p.qty*0.03;
+    });
+  }
 
-if(comboEnable.checked){
-  cart.forEach(p=>{
-    if(p.combo) comboDisc += p.price*p.qty*0.03;
-  });
-}
-
-comboDisc = Math.round(comboDisc);
-
-if(comboDisc>0){
-  comboRow.style.display="flex";
-  comboDiscEl.innerText = "₹"+comboDisc;
-}else{
-  comboRow.style.display="none";
-  const comboDiscEl = document.getElementById("comboDisc");
-
-}
-
-
-  const afterCombo = originalTotal - comboDisc;
-
-  // SLAB
+  const afterCombo = original - combo;
   const s = slab(afterCombo);
   const upi = paymentMode.value==="UPI" ? s.upi : 0;
-
-  // SPECIAL
   const special = specialEnable.checked ? +specialAmt.value||0 : 0;
 
-if(special>0){
-  specialRow.style.display="flex";
+  const save = combo + s.web + upi + special;
+
+  orderValue.innerText="₹"+original.toFixed(0);
+  webDisc.innerText="₹"+s.web;
+  upiDisc.innerText="₹"+upi;
+  totalSavings.innerText="₹"+save.toFixed(0);
+  finalPay.innerText="₹"+Math.max(0,original-save).toFixed(0);
+
+  comboRow.style.display = combo>0 ? "flex":"none";
+  comboDisc.innerText="₹"+Math.round(combo);
+
+  specialRow.style.display = special>0 ? "flex":"none";
   specialDisc.innerText="₹"+special;
-}else{
-  specialRow.style.display="none";
-}
 
-
-  // hide UPI row
   upiDisc.parentElement.style.display =
     paymentMode.value==="UPI"?"flex":"none";
+
+  // fill screenshot info
+  sSales.innerText=salesPerson.value;
+  sCustomer.innerText=customerName.value;
+  sMobile.innerText=customerMobile.value;
 }
 
 
-// ================= HOOKS =================
-paymentMode.onchange=calculate;
-comboEnable.onchange=render;
-specialEnable.onchange=()=>{
-  specialAmt.disabled=!specialEnable.checked;
+// ===== offer id =====
+function offerIdGen(){
+  return "HH-"+Date.now().toString().slice(-6);
+}
+
+
+// ===== screenshot =====
+copyScreenshot.onclick = async ()=>{
+  offerId.innerText = offerIdGen();
+  const d = new Date(Date.now()+24*60*60*1000);
+  validTill.innerText=d.toLocaleString();
   calculate();
-};
 
-
-// ================= SCREENSHOT =================
-copyScreenshot.onclick = async () => {
-
-  // create offer id
-  const id = generateOfferId();
-  offerId.innerText = id;
-
-  // validity 24h
-  const d = new Date(Date.now() + 24*60*60*1000);
-  validTill.innerText = d.toLocaleString();
-
-  await calculate(); // refresh numbers
-
-  html2canvas(document.getElementById("offerArea")).then(async canvas => {
-    const blob = await new Promise(res => canvas.toBlob(res));
+  html2canvas(offerArea).then(async canvas=>{
+    const blob = await new Promise(r=>canvas.toBlob(r));
     await navigator.clipboard.write([
-      new ClipboardItem({ "image/png": blob })
+      new ClipboardItem({"image/png":blob})
     ]);
-    alert("Screenshot copied to clipboard");
+    alert("Screenshot copied");
   });
 };
 
 
-
-// ================= COPY SUMMARY =================
-copySummary.onclick = ()=>{
-  const text = `
+// ===== summary =====
+copySummary.onclick=()=>{
+  const txt=`
 Offer ID: ${offerId.innerText}
 Valid Till: ${validTill.innerText}
 
@@ -201,29 +170,18 @@ Mobile: ${customerMobile.value}
 Order: ${orderValue.innerText}
 Website: ${webDisc.innerText}
 UPI: ${upiDisc.innerText}
-Combo: ${comboDiscEl.innerText}
+Combo: ${comboDisc.innerText}
 Special: ${specialDisc.innerText}
 
-Final Payable: ${finalPay.innerText}
+Pay: ${finalPay.innerText}
 `;
-  navigator.clipboard.writeText(text);
+  navigator.clipboard.writeText(txt);
   alert("Summary copied");
 };
 
-// ================= CLEAR =================
-document.getElementById("clearCart").onclick=()=>{
-  cart=[];
-  render();
-};
 
-document.getElementById("clearAll").onclick=()=>location.reload();
+// ===== clear =====
+clearCart.onclick=()=>{cart=[];render();};
+clearAll.onclick=()=>location.reload();
 
 });
-
-function generateOfferId(){
-  const t = Date.now().toString().slice(-6);
-  return "HH-" + t;
-}
-
-
-
