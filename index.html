@@ -43,19 +43,36 @@ th{background:#fafafa;font-weight:800}
 }
 
 #suggestions{
-  position:relative;background:#fff;border:1px solid #ddd;
+  background:#fff;border:1px solid #ddd;
   border-radius:10px;margin-top:6px;display:none;max-height:180px;overflow:auto
 }
 .suggItem{padding:8px;cursor:pointer}
 .suggItem:hover{background:#eee}
 
 .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.header{
+  display:flex;align-items:center;gap:12px;margin-bottom:10px
+}
+.logo{
+  height:48px
+}
 </style>
 </head>
 
 <body>
 <div class="container">
 <div class="card">
+
+<!-- HEADER -->
+<div class="header">
+  <img src="logo.png" class="logo">
+  <div>
+    <h2 style="margin:0">HunyHuny Overseas Pvt. Ltd.</h2>
+    <div style="font-size:12px;color:#666;font-weight:700">
+      Discount Offer (WhatsApp Friendly)
+    </div>
+  </div>
+</div>
 
 <!-- TOP INPUTS -->
 <div class="grid">
@@ -86,14 +103,6 @@ th{background:#fafafa;font-weight:800}
     <label>Search Product by Model Number</label>
     <input id="modelSearch" placeholder="Type model no">
     <div id="suggestions"></div>
-    <div style="font-size:11px;margin-top:4px;">
-      Suggestions load from Google Sheet (Model No + Price).
-    </div>
-  </div>
-
-  <div class="field">
-    <label>&nbsp;</label>
-    <button class="btn-primary">+ Add Product</button>
   </div>
 </div>
 
@@ -104,7 +113,9 @@ th{background:#fafafa;font-weight:800}
     <input type="checkbox" id="specialEnable">
     Apply Special Discount Offer
   </label>
+
   <div style="margin-top:8px">
+    <input id="specialName" placeholder="Offer Name">
     <input id="specialAmt" type="number" placeholder="Offer Amount" disabled>
   </div>
 </div>
@@ -114,67 +125,60 @@ th{background:#fafafa;font-weight:800}
 <div class="offer-box">
   <label>
     <input type="checkbox" id="comboEnable">
-    Apply 3% Combo Discount (Select exactly 2 products, each ₹5000+)
+    Apply 3% Combo Discount (Select 2 products, each ₹5000+)
   </label>
 </div>
 
 
-<!-- SLIP -->
-<div style="margin-top:14px;padding:14px;border-radius:14px;border:1px solid #e5e7eb;background:#fff">
+<!-- CART -->
+<table>
+  <thead>
+    <tr>
+      <th>Model No</th>
+      <th>Price</th>
+      <th>Qty</th>
+      <th>Total</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody id="cartBody"></tbody>
+</table>
 
-  <h2 style="margin:0 0 6px">HunyHuny Overseas Pvt. Ltd.</h2>
-  <div style="font-size:12px;color:#666;font-weight:700">
-    Discount Offer (WhatsApp Friendly)
+
+<!-- SUMMARY -->
+<div class="summary">
+  <div class="row"><span>Order Value</span><b id="orderValue">₹0</b></div>
+  <div class="row"><span>Website Discount</span><b id="webDisc">₹0</b></div>
+  <div class="row"><span>UPI Discount</span><b id="upiDisc">₹0</b></div>
+  <div class="row"><span>Total Savings</span><b id="totalSavings">₹0</b></div>
+
+  <hr>
+
+  <div class="row">
+    <span>Final Payable</span>
+    <b class="final" id="finalPay">₹0</b>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Model No</th>
-        <th>Price</th>
-        <th>Qty</th>
-        <th>Total</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="cartBody"></tbody>
-  </table>
-
-  <div class="summary">
-    <div class="row"><span>Order Value</span><b id="orderValue">₹0</b></div>
-    <div class="row"><span>Website Discount</span><b id="webDisc">₹0</b></div>
-    <div class="row"><span>UPI Discount</span><b id="upiDisc">₹0</b></div>
-    <div class="row"><span>Total Savings</span><b id="totalSavings">₹0</b></div>
-
-    <hr>
-
-    <div class="row">
-      <span>Final Payable</span>
-      <b class="final" id="finalPay">₹0</b>
-    </div>
-
-    <div style="text-align:center;margin-top:10px;font-size:12px;font-weight:700">
-      This offer is valid for 24 hours only.
-    </div>
+  <div style="text-align:center;margin-top:10px;font-size:12px;font-weight:700">
+    This offer is valid for 24 hours only.
   </div>
-
 </div>
 
 
 <!-- BUTTONS -->
 <div class="btns">
-  <button class="btn-success">Create Offer</button>
-  <button class="btn-secondary">Hide Breakdown</button>
-  <button class="btn-dark">Copy Screenshot</button>
-  <button class="btn-secondary">Copy Offer Summary</button>
-  <button class="btn-primary">WhatsApp Share</button>
-  <button class="btn-secondary">Clear Cart Only</button>
-  <button class="btn-danger">Clear All</button>
+  <button id="copyScreenshot" class="btn-dark">Copy Screenshot</button>
+  <button id="copySummary" class="btn-secondary">Copy Offer Summary</button>
+  <button id="clearCart" class="btn-secondary">Clear Cart Only</button>
+  <button id="clearAll" class="btn-danger">Clear All</button>
 </div>
 
 </div>
 </div>
 
+<!-- screenshot library -->
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script src="script.js"></script>
+
 </body>
 </html>
