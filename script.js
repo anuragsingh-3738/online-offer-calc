@@ -6,14 +6,19 @@ document.addEventListener("DOMContentLoaded", () => {
 let products = [];
 let cart = [];
 
-// ========= ELEMENTS =========
-const modelSearch = document.getElementById("modelSearch");
-const suggestions = document.getElementById("suggestions");
-const cartBody = document.getElementById("cartBody");
+
+// ================= SALES PERSON AUTOSAVE =================
+const salesInput = document.getElementById("salesPerson");
+if (salesInput) {
+  salesInput.value = localStorage.getItem("salesPerson") || "";
+  salesInput.addEventListener("input", () => {
+    localStorage.setItem("salesPerson", salesInput.value);
+  });
+}
+
+
+// ================= MOBILE LIMIT =================
 const mobileInput = document.getElementById("customerMobile");
-
-
-// ========= MOBILE LIMIT =========
 if (mobileInput) {
   mobileInput.addEventListener("input", () => {
     mobileInput.value = mobileInput.value.replace(/\D/g,'').slice(0,10);
@@ -21,67 +26,64 @@ if (mobileInput) {
 }
 
 
-// ========= FETCH =========
+// ================= FETCH =================
 fetch(SHEET_API)
   .then(r => r.json())
-  .then(data => {
-    products = data;
-    console.log("✅ Products:", products.length);
+  .then(data => products = data);
+
+
+// ================= SEARCH =================
+modelSearch.addEventListener("input", () => {
+  const val = modelSearch.value.toLowerCase();
+  suggestions.innerHTML = "";
+
+  if (!val) {
+    suggestions.style.display = "none";
+    return;
+  }
+
+  const match = products.filter(p =>
+    p.model.toLowerCase().includes(val)
+  );
+
+  match.slice(0,20).forEach(p => {
+    const div = document.createElement("div");
+    div.className = "suggItem";
+    div.innerText = `${p.model} - ₹${p.price}`;
+
+    div.onclick = () => {
+      cart.push({ model:p.model, price:p.price, qty:1, combo:false });
+      modelSearch.value="";
+      suggestions.style.display="none";
+      render();
+    };
+
+    suggestions.appendChild(div);
   });
 
-
-// ========= SEARCH =========
-if (modelSearch) {
-  modelSearch.addEventListener("input", () => {
-    const val = modelSearch.value.toLowerCase();
-    suggestions.innerHTML = "";
-
-    if (!val) {
-      suggestions.style.display = "none";
-      return;
-    }
-
-    const match = products.filter(p =>
-      p.model.toLowerCase().includes(val)
-    );
-
-    match.slice(0, 20).forEach(p => {
-      const div = document.createElement("div");
-      div.className = "suggItem";
-      div.innerText = `${p.model} - ₹${p.price}`;
-
-      div.onclick = () => {
-        cart.push({ model: p.model, price: p.price, qty: 1, combo:false });
-        suggestions.style.display = "none";
-        modelSearch.value="";
-        render();
-      };
-
-      suggestions.appendChild(div);
-    });
-
-    suggestions.style.display = match.length ? "block" : "none";
-  });
-}
+  suggestions.style.display = match.length ? "block" : "none";
+});
 
 
-// ========= RENDER =========
+// ================= RENDER =================
 function render() {
   cartBody.innerHTML = "";
 
-  cart.forEach((p, i) => {
+  const eligible = cart.filter(p=>p.price>=5000);
 
-    const comboCheck =
-      p.price >= 5000
-        ? `<input type="checkbox" ${p.combo?'checked':''}
-            onchange="toggleCombo(${i},this.checked)">`
-        : "";
+  cart.forEach((p,i)=>{
+
+    let comboBox = "";
+    if (eligible.length >= 2 && p.price >= 5000) {
+      comboBox =
+        `<input type="checkbox" ${p.combo?'checked':''}
+          onchange="toggleCombo(${i},this.checked)">`;
+    }
 
     cartBody.innerHTML += `
       <tr>
-        <td>${p.model}</td>
+        <td>${comboBox} ${p.model}</td>
         <td>₹${p.price}</td>
-        <td>${comboCheck}</td>
         <td>
           <input type="number" min="1" value="${p.qty}"
             onchange="updateQty(${i},this.value)">
@@ -106,12 +108,17 @@ window.removeItem = (i)=>{
 };
 
 window.toggleCombo = (i,val)=>{
+  const selected = cart.filter(p=>p.combo).length;
+  if(val && selected>=2){
+    alert("Only 2 products allowed for combo");
+    return;
+  }
   cart[i].combo = val;
   calculate();
 };
 
 
-// ========= SLAB =========
+// ================= SLAB =================
 function slabDiscount(total){
   if(total>=20000) return {web:1000,upi:500};
   if(total>=15000) return {web:700,upi:300};
@@ -122,38 +129,41 @@ function slabDiscount(total){
 }
 
 
-// ========= CALC =========
+// ================= CALC =================
 function calculate(){
-  const total = cart.reduce((s,p)=>s+p.price*p.qty,0);
-  const slab = slabDiscount(total);
 
+  let total = cart.reduce((s,p)=>s+p.price*p.qty,0);
+
+  // combo first
+  let comboDiscount = 0;
+  if(comboEnable.checked){
+    cart.forEach(p=>{
+      if(p.combo) comboDiscount += p.price*p.qty*0.03;
+    });
+  }
+
+  total -= comboDiscount;
+
+  // slab on remaining
+  const slab = slabDiscount(total);
   const upi = paymentMode.value==="UPI" ? slab.upi : 0;
 
-  const comboItems = cart.filter(p=>p.combo);
-  const combo =
-    comboEnable.checked &&
-    comboItems.length === 2 &&
-    comboItems.every(p=>p.price>=5000)
-      ? total*0.03 : 0;
-
+  // special
   const special =
     specialEnable.checked ? Number(specialAmt.value||0) : 0;
 
-  const save = slab.web + upi + combo + special;
+  const save = comboDiscount + slab.web + upi + special;
 
-  orderValue.innerText = "₹"+total.toFixed(0);
+  orderValue.innerText = "₹"+(cart.reduce((s,p)=>s+p.price*p.qty,0)).toFixed(0);
   webDisc.innerText = "₹"+slab.web;
   upiDisc.innerText = "₹"+upi;
   totalSavings.innerText = "₹"+save.toFixed(0);
-  finalPay.innerText = "₹"+Math.max(0,total-save).toFixed(0);
-
-  // hide UPI row
-  upiDisc.parentElement.style.display =
-    paymentMode.value==="UPI" ? "flex" : "none";
+  finalPay.innerText =
+    "₹"+Math.max(0,orderValue.innerText.replace("₹","")-save);
 }
 
 
-// ========= CHECKBOX HOOK =========
+// ================= CHECKBOXES =================
 paymentMode.onchange = calculate;
 comboEnable.onchange = calculate;
 specialEnable.onchange = ()=>{
@@ -162,11 +172,11 @@ specialEnable.onchange = ()=>{
 };
 
 
-// ========= SCREENSHOT =========
+// ================= SCREENSHOT =================
 const screenshotBtn = document.querySelector(".btn-dark");
 if (screenshotBtn) {
   screenshotBtn.onclick = () => {
-    html2canvas(document.body).then(canvas=>{
+    html2canvas(document.querySelector(".card")).then(canvas=>{
       const link = document.createElement("a");
       link.download = "offer.png";
       link.href = canvas.toDataURL();
@@ -176,21 +186,21 @@ if (screenshotBtn) {
 }
 
 
-// ========= COPY SUMMARY =========
+// ================= COPY SUMMARY =================
 const copyBtn = document.querySelectorAll(".btn-secondary")[1];
 if(copyBtn){
   copyBtn.onclick = ()=>{
-    const text =
+    const txt =
 `Order: ${orderValue.innerText}
-Discount: ${totalSavings.innerText}
+Savings: ${totalSavings.innerText}
 Pay: ${finalPay.innerText}`;
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(txt);
     alert("Copied");
   };
 }
 
 
-// ========= CLEAR =========
+// ================= CLEAR =================
 const clearCartBtn = document.querySelectorAll(".btn-secondary")[2];
 if(clearCartBtn){
   clearCartBtn.onclick = ()=>{
