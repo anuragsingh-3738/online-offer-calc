@@ -7,86 +7,79 @@ let products = [];
 let cart = [];
 
 
-// ================= SALES PERSON AUTOSAVE =================
+// ================= AUTOSAVE SALES =================
 const salesInput = document.getElementById("salesPerson");
 if (salesInput) {
   salesInput.value = localStorage.getItem("salesPerson") || "";
-  salesInput.addEventListener("input", () => {
+  salesInput.oninput = () =>
     localStorage.setItem("salesPerson", salesInput.value);
-  });
 }
 
 
 // ================= MOBILE LIMIT =================
-const mobileInput = document.getElementById("customerMobile");
-if (mobileInput) {
-  mobileInput.addEventListener("input", () => {
-    mobileInput.value = mobileInput.value.replace(/\D/g,'').slice(0,10);
-  });
+const mobile = document.getElementById("customerMobile");
+if (mobile) {
+  mobile.oninput = () =>
+    mobile.value = mobile.value.replace(/\D/g,'').slice(0,10);
 }
 
 
 // ================= FETCH =================
 fetch(SHEET_API)
-  .then(r => r.json())
-  .then(data => products = data);
+  .then(r=>r.json())
+  .then(d=>products=d);
 
 
 // ================= SEARCH =================
-modelSearch.addEventListener("input", () => {
+modelSearch.addEventListener("input", ()=>{
   const val = modelSearch.value.toLowerCase();
-  suggestions.innerHTML = "";
+  suggestions.innerHTML="";
 
-  if (!val) {
-    suggestions.style.display = "none";
-    return;
-  }
+  if(!val){ suggestions.style.display="none"; return; }
 
-  const match = products.filter(p =>
-    p.model.toLowerCase().includes(val)
-  );
+  products
+    .filter(p=>p.model.toLowerCase().includes(val))
+    .slice(0,20)
+    .forEach(p=>{
+      const div=document.createElement("div");
+      div.className="suggItem";
+      div.innerText=`${p.model} - ₹${p.price}`;
+      div.onclick=()=>{
+        cart.push({model:p.model,price:p.price,qty:1,combo:false});
+        modelSearch.value="";
+        suggestions.style.display="none";
+        render();
+      };
+      suggestions.appendChild(div);
+    });
 
-  match.slice(0,20).forEach(p => {
-    const div = document.createElement("div");
-    div.className = "suggItem";
-    div.innerText = `${p.model} - ₹${p.price}`;
-
-    div.onclick = () => {
-      cart.push({ model:p.model, price:p.price, qty:1, combo:false });
-      modelSearch.value="";
-      suggestions.style.display="none";
-      render();
-    };
-
-    suggestions.appendChild(div);
-  });
-
-  suggestions.style.display = match.length ? "block" : "none";
+  suggestions.style.display="block";
 });
 
 
 // ================= RENDER =================
-function render() {
-  cartBody.innerHTML = "";
+function render(){
+  cartBody.innerHTML="";
 
-  const eligible = cart.filter(p=>p.price>=5000);
+  const comboSelected = cart.filter(p=>p.combo).length;
 
   cart.forEach((p,i)=>{
 
-    let comboBox = "";
-    if (eligible.length >= 2 && p.price >= 5000) {
-      comboBox =
-        `<input type="checkbox" ${p.combo?'checked':''}
-          onchange="toggleCombo(${i},this.checked)">`;
+    let cb = "";
+    if(comboEnable.checked && p.price>=5000){
+      const disabled = comboSelected>=2 && !p.combo;
+      cb = `<input type="checkbox" ${p.combo?'checked':''}
+            ${disabled?'disabled':''}
+            onchange="toggleCombo(${i},this.checked)">`;
     }
 
-    cartBody.innerHTML += `
+    cartBody.innerHTML+=`
       <tr>
-        <td>${comboBox} ${p.model}</td>
+        <td>${cb} ${p.model}</td>
         <td>₹${p.price}</td>
         <td>
           <input type="number" min="1" value="${p.qty}"
-            onchange="updateQty(${i},this.value)">
+          onchange="updateQty(${i},this.value)">
         </td>
         <td>₹${p.price*p.qty}</td>
         <td><button onclick="removeItem(${i})">❌</button></td>
@@ -97,29 +90,13 @@ function render() {
   calculate();
 }
 
-window.updateQty = (i,v)=>{
-  cart[i].qty = Number(v);
-  calculate();
-};
-
-window.removeItem = (i)=>{
-  cart.splice(i,1);
-  render();
-};
-
-window.toggleCombo = (i,val)=>{
-  const selected = cart.filter(p=>p.combo).length;
-  if(val && selected>=2){
-    alert("Only 2 products allowed for combo");
-    return;
-  }
-  cart[i].combo = val;
-  calculate();
-};
+window.updateQty=(i,v)=>{cart[i].qty=+v;calculate();};
+window.removeItem=(i)=>{cart.splice(i,1);render();};
+window.toggleCombo=(i,v)=>{cart[i].combo=v;render();};
 
 
 // ================= SLAB =================
-function slabDiscount(total){
+function slab(total){
   if(total>=20000) return {web:1000,upi:500};
   if(total>=15000) return {web:700,upi:300};
   if(total>=13000) return {web:500,upi:300};
@@ -129,89 +106,86 @@ function slabDiscount(total){
 }
 
 
-// ================= CALC =================
+// ================= CALCULATE =================
 function calculate(){
 
-  let total = cart.reduce((s,p)=>s+p.price*p.qty,0);
+  const originalTotal = cart.reduce((s,p)=>s+p.price*p.qty,0);
 
-  // combo first
-  let comboDiscount = 0;
+  // COMBO FIRST
+  let comboDisc = 0;
   if(comboEnable.checked){
     cart.forEach(p=>{
-      if(p.combo) comboDiscount += p.price*p.qty*0.03;
+      if(p.combo) comboDisc += p.price*p.qty*0.03;
     });
   }
 
-  total -= comboDiscount;
+  const afterCombo = originalTotal - comboDisc;
 
-  // slab on remaining
-  const slab = slabDiscount(total);
-  const upi = paymentMode.value==="UPI" ? slab.upi : 0;
+  // SLAB
+  const s = slab(afterCombo);
+  const upi = paymentMode.value==="UPI" ? s.upi : 0;
 
-  // special
-  const special =
-    specialEnable.checked ? Number(specialAmt.value||0) : 0;
+  // SPECIAL
+  const special = specialEnable.checked ? +specialAmt.value||0 : 0;
 
-  const save = comboDiscount + slab.web + upi + special;
+  const save = comboDisc + s.web + upi + special;
 
-  orderValue.innerText = "₹"+(cart.reduce((s,p)=>s+p.price*p.qty,0)).toFixed(0);
-  webDisc.innerText = "₹"+slab.web;
-  upiDisc.innerText = "₹"+upi;
-  totalSavings.innerText = "₹"+save.toFixed(0);
-  finalPay.innerText =
-    "₹"+Math.max(0,orderValue.innerText.replace("₹","")-save);
+  orderValue.innerText="₹"+originalTotal.toFixed(0);
+  webDisc.innerText="₹"+s.web;
+  upiDisc.innerText="₹"+upi;
+  totalSavings.innerText="₹"+save.toFixed(0);
+  finalPay.innerText="₹"+Math.max(0,originalTotal-save).toFixed(0);
+
+  // hide UPI row
+  upiDisc.parentElement.style.display =
+    paymentMode.value==="UPI"?"flex":"none";
 }
 
 
-// ================= CHECKBOXES =================
-paymentMode.onchange = calculate;
-comboEnable.onchange = calculate;
-specialEnable.onchange = ()=>{
-  specialAmt.disabled = !specialEnable.checked;
+// ================= HOOKS =================
+paymentMode.onchange=calculate;
+comboEnable.onchange=render;
+specialEnable.onchange=()=>{
+  specialAmt.disabled=!specialEnable.checked;
   calculate();
 };
 
 
 // ================= SCREENSHOT =================
-const screenshotBtn = document.querySelector(".btn-dark");
-if (screenshotBtn) {
-  screenshotBtn.onclick = () => {
-    html2canvas(document.querySelector(".card")).then(canvas=>{
-      const link = document.createElement("a");
-      link.download = "offer.png";
-      link.href = canvas.toDataURL();
-      link.click();
-    });
-  };
-}
+document.getElementById("copyScreenshot").onclick=()=>{
+  html2canvas(document.querySelector(".card")).then(canvas=>{
+    const a=document.createElement("a");
+    a.download="offer.png";
+    a.href=canvas.toDataURL();
+    a.click();
+  });
+};
 
 
 // ================= COPY SUMMARY =================
-const copyBtn = document.querySelectorAll(".btn-secondary")[1];
-if(copyBtn){
-  copyBtn.onclick = ()=>{
-    const txt =
-`Order: ${orderValue.innerText}
+document.getElementById("copySummary").onclick=()=>{
+  const text=
+`Sales: ${salesInput.value}
+Customer: ${customerName.value}
+Mobile: ${mobile.value}
+
+Order: ${orderValue.innerText}
+Website: ${webDisc.innerText}
+UPI: ${upiDisc.innerText}
 Savings: ${totalSavings.innerText}
 Pay: ${finalPay.innerText}`;
-    navigator.clipboard.writeText(txt);
-    alert("Copied");
-  };
-}
+
+  navigator.clipboard.writeText(text);
+  alert("Copied");
+};
 
 
 // ================= CLEAR =================
-const clearCartBtn = document.querySelectorAll(".btn-secondary")[2];
-if(clearCartBtn){
-  clearCartBtn.onclick = ()=>{
-    cart=[];
-    render();
-  };
-}
+document.getElementById("clearCart").onclick=()=>{
+  cart=[];
+  render();
+};
 
-const clearAllBtn = document.querySelector(".btn-danger");
-if(clearAllBtn){
-  clearAllBtn.onclick = ()=> location.reload();
-}
+document.getElementById("clearAll").onclick=()=>location.reload();
 
 });
