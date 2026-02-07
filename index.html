@@ -1,180 +1,207 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>HunyHuny Discount Offer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+const SHEET_API =
+"https://script.google.com/macros/s/AKfycbw4mxhBfzXjFVB_dBm4_7vo2_iNuFXThaLuuP0s9TBerqgnFjfRJ3UcE6SYQzz36yI/exec";
 
-<style>
-body{font-family:Arial;margin:0;background:#f5f6fa}
-.container{max-width:1100px;margin:20px auto;padding:14px}
-.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 3px 10px rgba(0,0,0,.08)}
+document.addEventListener("DOMContentLoaded", () => {
 
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}
-.field input,.field select{
-  width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;font-size:14px;
+let products = [];
+let cart = [];
+
+// ========= ELEMENTS =========
+const modelSearch = document.getElementById("modelSearch");
+const suggestions = document.getElementById("suggestions");
+const cartBody = document.getElementById("cartBody");
+const mobileInput = document.getElementById("customerMobile");
+
+
+// ========= MOBILE LIMIT =========
+if (mobileInput) {
+  mobileInput.addEventListener("input", () => {
+    mobileInput.value = mobileInput.value.replace(/\D/g,'').slice(0,10);
+  });
 }
 
-button{border:0;padding:10px 12px;border-radius:10px;font-weight:700;cursor:pointer}
-.btn-primary{background:#2f6fed;color:#fff}
-.btn-success{background:#16a34a;color:#fff}
-.btn-secondary{background:#eef2ff;color:#1e40af}
-.btn-danger{background:#ffe4e6;color:#9f1239}
-.btn-dark{background:#111827;color:#fff}
 
-.offer-box{
-  margin-top:12px;padding:12px;border-radius:12px;
-  background:#fff7ed;border:1px solid #fed7aa
+// ========= FETCH =========
+fetch(SHEET_API)
+  .then(r => r.json())
+  .then(data => {
+    products = data;
+    console.log("✅ Products:", products.length);
+  });
+
+
+// ========= SEARCH =========
+if (modelSearch) {
+  modelSearch.addEventListener("input", () => {
+    const val = modelSearch.value.toLowerCase();
+    suggestions.innerHTML = "";
+
+    if (!val) {
+      suggestions.style.display = "none";
+      return;
+    }
+
+    const match = products.filter(p =>
+      p.model.toLowerCase().includes(val)
+    );
+
+    match.slice(0, 20).forEach(p => {
+      const div = document.createElement("div");
+      div.className = "suggItem";
+      div.innerText = `${p.model} - ₹${p.price}`;
+
+      div.onclick = () => {
+        cart.push({ model: p.model, price: p.price, qty: 1, combo:false });
+        suggestions.style.display = "none";
+        modelSearch.value="";
+        render();
+      };
+
+      suggestions.appendChild(div);
+    });
+
+    suggestions.style.display = match.length ? "block" : "none";
+  });
 }
 
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border-bottom:1px solid #eee;padding:10px;font-size:13px;text-align:left}
-th{background:#fafafa;font-weight:800}
 
-.summary{
-  margin-top:14px;border:1px dashed #ddd;padding:12px;border-radius:12px;background:#fcfcff
-}
-.row{display:flex;justify-content:space-between;padding:6px 0}
+// ========= RENDER =========
+function render() {
+  cartBody.innerHTML = "";
 
-.final{
-  font-size:22px;font-weight:900;color:#fff;background:#111827;
-  padding:12px 16px;border-radius:14px
-}
+  cart.forEach((p, i) => {
 
-#suggestions{
-  position:relative;background:#fff;border:1px solid #ddd;
-  border-radius:10px;margin-top:6px;display:none;max-height:180px;overflow:auto
-}
-.suggItem{padding:8px;cursor:pointer}
-.suggItem:hover{background:#eee}
+    const comboCheck =
+      p.price >= 5000
+        ? `<input type="checkbox" ${p.combo?'checked':''}
+            onchange="toggleCombo(${i},this.checked)">`
+        : "";
 
-.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-</style>
-</head>
-
-<body>
-<div class="container">
-<div class="card">
-
-<!-- TOP INPUTS -->
-<div class="grid">
-  <div class="field">
-    <label>Sales Person Name</label>
-    <input id="salesPerson" placeholder="Enter sales person name">
-  </div>
-
-  <div class="field">
-    <label>Customer Name</label>
-    <input id="customerName" placeholder="Enter customer name">
-  </div>
-
-  <div class="field">
-    <label>Customer Mobile Number</label>
-    <input id="customerMobile" placeholder="10-digit mobile">
-  </div>
-
-  <div class="field">
-    <label>Payment Mode</label>
-    <select id="paymentMode">
-      <option value="UPI">UPI</option>
-      <option value="NET">Net Banking</option>
-    </select>
-  </div>
-
-  <div class="field">
-    <label>Search Product by Model Number</label>
-    <input id="modelSearch" placeholder="Type model no">
-    <div id="suggestions"></div>
-    <div style="font-size:11px;margin-top:4px;">
-      Suggestions load from Google Sheet (Model No + Price).
-    </div>
-  </div>
-
-  <div class="field">
-    <label>&nbsp;</label>
-    <button class="btn-primary">+ Add Product</button>
-  </div>
-</div>
-
-
-<!-- SPECIAL -->
-<div class="offer-box">
-  <label>
-    <input type="checkbox" id="specialEnable">
-    Apply Special Discount Offer
-  </label>
-  <div style="margin-top:8px">
-    <input id="specialAmt" type="number" placeholder="Offer Amount" disabled>
-  </div>
-</div>
-
-
-<!-- COMBO -->
-<div class="offer-box">
-  <label>
-    <input type="checkbox" id="comboEnable">
-    Apply 3% Combo Discount (Select exactly 2 products, each ₹5000+)
-  </label>
-</div>
-
-
-<!-- SLIP -->
-<div style="margin-top:14px;padding:14px;border-radius:14px;border:1px solid #e5e7eb;background:#fff">
-
-  <h2 style="margin:0 0 6px">HunyHuny Overseas Pvt. Ltd.</h2>
-  <div style="font-size:12px;color:#666;font-weight:700">
-    Discount Offer (WhatsApp Friendly)
-  </div>
-
-  <table>
-    <thead>
+    cartBody.innerHTML += `
       <tr>
-        <th>Model No</th>
-        <th>Price</th>
-        <th>Qty</th>
-        <th>Total</th>
-        <th>Action</th>
+        <td>${p.model}</td>
+        <td>₹${p.price}</td>
+        <td>${comboCheck}</td>
+        <td>
+          <input type="number" min="1" value="${p.qty}"
+            onchange="updateQty(${i},this.value)">
+        </td>
+        <td>₹${p.price*p.qty}</td>
+        <td><button onclick="removeItem(${i})">❌</button></td>
       </tr>
-    </thead>
-    <tbody id="cartBody"></tbody>
-  </table>
+    `;
+  });
 
-  <div class="summary">
-    <div class="row"><span>Order Value</span><b id="orderValue">₹0</b></div>
-    <div class="row"><span>Website Discount</span><b id="webDisc">₹0</b></div>
-    <div class="row"><span>UPI Discount</span><b id="upiDisc">₹0</b></div>
-    <div class="row"><span>Total Savings</span><b id="totalSavings">₹0</b></div>
+  calculate();
+}
 
-    <hr>
+window.updateQty = (i,v)=>{
+  cart[i].qty = Number(v);
+  calculate();
+};
 
-    <div class="row">
-      <span>Final Payable</span>
-      <b class="final" id="finalPay">₹0</b>
-    </div>
+window.removeItem = (i)=>{
+  cart.splice(i,1);
+  render();
+};
 
-    <div style="text-align:center;margin-top:10px;font-size:12px;font-weight:700">
-      This offer is valid for 24 hours only.
-    </div>
-  </div>
-
-</div>
+window.toggleCombo = (i,val)=>{
+  cart[i].combo = val;
+  calculate();
+};
 
 
-<!-- BUTTONS -->
-<div class="btns">
-  <button class="btn-success">Create Offer</button>
-  <button class="btn-secondary">Hide Breakdown</button>
-  <button class="btn-dark">Copy Screenshot</button>
-  <button class="btn-secondary">Copy Offer Summary</button>
-  <button class="btn-primary">WhatsApp Share</button>
-  <button class="btn-secondary">Clear Cart Only</button>
-  <button class="btn-danger">Clear All</button>
-</div>
+// ========= SLAB =========
+function slabDiscount(total){
+  if(total>=20000) return {web:1000,upi:500};
+  if(total>=15000) return {web:700,upi:300};
+  if(total>=13000) return {web:500,upi:300};
+  if(total>=10000) return {web:500,upi:200};
+  if(total>=5000) return {web:200,upi:100};
+  return {web:0,upi:0};
+}
 
-</div>
-</div>
 
-<script src="script.js"></script>
-</body>
-</html>
+// ========= CALC =========
+function calculate(){
+  const total = cart.reduce((s,p)=>s+p.price*p.qty,0);
+  const slab = slabDiscount(total);
+
+  const upi = paymentMode.value==="UPI" ? slab.upi : 0;
+
+  const comboItems = cart.filter(p=>p.combo);
+  const combo =
+    comboEnable.checked &&
+    comboItems.length === 2 &&
+    comboItems.every(p=>p.price>=5000)
+      ? total*0.03 : 0;
+
+  const special =
+    specialEnable.checked ? Number(specialAmt.value||0) : 0;
+
+  const save = slab.web + upi + combo + special;
+
+  orderValue.innerText = "₹"+total.toFixed(0);
+  webDisc.innerText = "₹"+slab.web;
+  upiDisc.innerText = "₹"+upi;
+  totalSavings.innerText = "₹"+save.toFixed(0);
+  finalPay.innerText = "₹"+Math.max(0,total-save).toFixed(0);
+
+  // hide UPI row
+  upiDisc.parentElement.style.display =
+    paymentMode.value==="UPI" ? "flex" : "none";
+}
+
+
+// ========= CHECKBOX HOOK =========
+paymentMode.onchange = calculate;
+comboEnable.onchange = calculate;
+specialEnable.onchange = ()=>{
+  specialAmt.disabled = !specialEnable.checked;
+  calculate();
+};
+
+
+// ========= SCREENSHOT =========
+const screenshotBtn = document.querySelector(".btn-dark");
+if (screenshotBtn) {
+  screenshotBtn.onclick = () => {
+    html2canvas(document.body).then(canvas=>{
+      const link = document.createElement("a");
+      link.download = "offer.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+  };
+}
+
+
+// ========= COPY SUMMARY =========
+const copyBtn = document.querySelectorAll(".btn-secondary")[1];
+if(copyBtn){
+  copyBtn.onclick = ()=>{
+    const text =
+`Order: ${orderValue.innerText}
+Discount: ${totalSavings.innerText}
+Pay: ${finalPay.innerText}`;
+    navigator.clipboard.writeText(text);
+    alert("Copied");
+  };
+}
+
+
+// ========= CLEAR =========
+const clearCartBtn = document.querySelectorAll(".btn-secondary")[2];
+if(clearCartBtn){
+  clearCartBtn.onclick = ()=>{
+    cart=[];
+    render();
+  };
+}
+
+const clearAllBtn = document.querySelector(".btn-danger");
+if(clearAllBtn){
+  clearAllBtn.onclick = ()=> location.reload();
+}
+
+});
