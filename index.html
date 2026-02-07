@@ -71,6 +71,8 @@ th{background:#fafafa;font-weight:800}
     <div style="font-size:12px;color:#666;font-weight:700">
       Discount Offer (WhatsApp Friendly)
     </div>
+<div>Offer ID: <b id="offerId">Not Created</b></div>
+<div>Valid Till: <b id="validTill">-</b></div>
   </div>
 </div>
 
@@ -150,6 +152,16 @@ th{background:#fafafa;font-weight:800}
   <div class="row"><span>Order Value</span><b id="orderValue">₹0</b></div>
   <div class="row"><span>Website Discount</span><b id="webDisc">₹0</b></div>
   <div class="row"><span>UPI Discount</span><b id="upiDisc">₹0</b></div>
+  <div class="row" id="comboRow" style="display:none">
+  <span>Combo Discount</span>
+  <b id="comboDisc">₹0</b>
+</div>
+
+<div class="row" id="specialRow" style="display:none">
+  <span>Special Discount</span>
+  <b id="specialDisc">₹0</b>
+</div>
+
   <div class="row"><span>Total Savings</span><b id="totalSavings">₹0</b></div>
 
   <hr>
@@ -179,6 +191,9 @@ th{background:#fafafa;font-weight:800}
 <!-- screenshot library -->
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script src="script.js"></script>
+<div id="offerArea">
+   <!-- header, customer, cart, breakdown -->
+</div>
 
 </body>
 </html>
