@@ -10,14 +10,13 @@ body{font-family:Arial;margin:0;background:#f5f6fa}
 .container{max-width:1100px;margin:20px auto;padding:14px}
 .card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 3px 10px rgba(0,0,0,.08)}
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.field label{display:block;font-size:12px;font-weight:700;margin-bottom:6px}
+.field label{font-size:12px;font-weight:700;margin-bottom:6px;display:block}
 .field input,.field select{width:100%;padding:10px;border-radius:10px;border:1px solid #ddd}
 
 button{border:0;padding:10px 12px;border-radius:10px;font-weight:700;cursor:pointer}
-.btn-primary{background:#2f6fed;color:#fff}
+.btn-dark{background:#111827;color:#fff}
 .btn-secondary{background:#eef2ff;color:#1e40af}
 .btn-danger{background:#ffe4e6;color:#9f1239}
-.btn-dark{background:#111827;color:#fff}
 
 table{width:100%;border-collapse:collapse;margin-top:12px}
 th,td{border-bottom:1px solid #eee;padding:10px;font-size:13px}
@@ -31,16 +30,15 @@ th{background:#fafafa}
   padding:12px 16px;border-radius:14px
 }
 
+.header{display:flex;gap:12px;align-items:center}
+.logo{height:48px}
+
 #suggestions{
   background:#fff;border:1px solid #ddd;border-radius:10px;
   margin-top:6px;display:none;max-height:150px;overflow:auto
 }
 .suggItem{padding:8px;cursor:pointer}
 .suggItem:hover{background:#eee}
-
-.header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.logo{height:48px}
-.btns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
 </style>
 </head>
 
@@ -57,6 +55,8 @@ th{background:#fafafa}
     </div>
   </div>
 </div>
+
+<br>
 
 <div class="grid">
   <div class="field">
@@ -75,7 +75,7 @@ th{background:#fafafa}
   </div>
 
   <div class="field">
-    <label>Payment Mode</label>
+    <label>Payment</label>
     <select id="paymentMode">
       <option value="UPI">UPI</option>
       <option value="NET">Net Banking</option>
@@ -92,76 +92,74 @@ th{background:#fafafa}
 <br>
 
 <label><input type="checkbox" id="specialEnable"> Special Discount</label>
-<input id="specialName" placeholder="Offer Name">
-<input id="specialAmt" placeholder="Amount" type="number" disabled>
+<input id="specialName" placeholder="Offer name">
+<input id="specialAmt" type="number" placeholder="Amount" disabled>
 
 <br><br>
 
-<label><input type="checkbox" id="comboEnable"> Enable 3% Combo</label>
-
+<label><input type="checkbox" id="comboEnable"> Enable Combo 3%</label>
 
 <!-- ================= SCREENSHOT AREA ================= -->
 <div id="offerArea">
 
-  <div class="summary">
-    <div class="row"><span>Offer ID</span><b id="offerId">Not Created</b></div>
-    <div class="row"><span>Valid Till</span><b id="validTill">-</b></div>
-    <div class="row"><span>Sales</span><b id="sSales"></b></div>
-    <div class="row"><span>Customer</span><b id="sCustomer"></b></div>
-    <div class="row"><span>Mobile</span><b id="sMobile"></b></div>
+<div class="summary">
+  <div class="row"><span>Offer ID</span><b id="offerId">Not Created</b></div>
+  <div class="row"><span>Valid Till</span><b id="validTill">-</b></div>
+  <div class="row"><span>Sales</span><b id="sSales"></b></div>
+  <div class="row"><span>Customer</span><b id="sCustomer"></b></div>
+  <div class="row"><span>Mobile</span><b id="sMobile"></b></div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Price</th>
+      <th>Qty</th>
+      <th>Total</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody id="cartBody"></tbody>
+</table>
+
+<div class="summary">
+  <div class="row"><span>Order Value</span><b id="orderValue">₹0</b></div>
+  <div class="row"><span>Website</span><b id="webDisc">₹0</b></div>
+  <div class="row"><span>UPI</span><b id="upiDisc">₹0</b></div>
+
+  <div class="row" id="comboRow" style="display:none">
+    <span>Combo</span><b id="comboDisc">₹0</b>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Model</th>
-        <th>Price</th>
-        <th>Qty</th>
-        <th>Total</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="cartBody"></tbody>
-  </table>
-
-  <div class="summary">
-    <div class="row"><span>Order Value</span><b id="orderValue">₹0</b></div>
-    <div class="row"><span>Website</span><b id="webDisc">₹0</b></div>
-    <div class="row"><span>UPI</span><b id="upiDisc">₹0</b></div>
-
-    <div class="row" id="comboRow" style="display:none">
-      <span>Combo</span><b id="comboDisc">₹0</b>
-    </div>
-
-    <div class="row" id="specialRow" style="display:none">
-      <span>Special</span><b id="specialDisc">₹0</b>
-    </div>
-
-    <div class="row"><span>Total Savings</span><b id="totalSavings">₹0</b></div>
-
-    <hr>
-    <div class="row">
-      <span>Final Payable</span>
-      <b class="final" id="finalPay">₹0</b>
-    </div>
+  <div class="row" id="specialRow" style="display:none">
+    <span>Special</span><b id="specialDisc">₹0</b>
   </div>
+
+  <div class="row"><span>Total Savings</span><b id="totalSavings">₹0</b></div>
+
+  <hr>
+
+  <div class="row">
+    <span>Final Payable</span>
+    <b class="final" id="finalPay">₹0</b>
+  </div>
+</div>
 
 </div>
 <!-- ================= END SCREENSHOT AREA ================= -->
 
+<br>
 
-<div class="btns">
-  <button id="copyScreenshot" class="btn-dark">Copy Screenshot</button>
-  <button id="copySummary" class="btn-secondary">Copy Offer Summary</button>
-  <button id="clearCart" class="btn-secondary">Clear Cart</button>
-  <button id="clearAll" class="btn-danger">Clear All</button>
-</div>
+<button id="copyScreenshot" class="btn-dark">📸 Copy Screenshot</button>
+<button id="copySummary" class="btn-secondary">🧾 Copy Summary</button>
+<button id="clearCart" class="btn-secondary">🧹 Clear Cart</button>
+<button id="clearAll" class="btn-danger">🧨 Clear All</button>
 
 </div>
 </div>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script src="script.js"></script>
-
 </body>
 </html>
