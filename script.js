@@ -6,25 +6,23 @@ document.addEventListener("DOMContentLoaded", () => {
 let products = [];
 let cart = [];
 
-// ========= ELEMENTS =========
+// ===== ELEMENTS FROM YOUR ORIGINAL UI =====
 const modelSearch = document.getElementById("modelSearch");
 const suggestions = document.getElementById("suggestions");
-const model = document.getElementById("model");
-const price = document.getElementById("price");
 const cartBody = document.getElementById("cartBody");
 
 
-// ========= FETCH PRODUCTS =========
+// ===== FETCH =====
 fetch(SHEET_API)
   .then(r => r.json())
   .then(data => {
     products = data;
-    console.log("✅ Products Loaded:", products.length);
+    console.log("✅ Products:", products.length);
   })
-  .catch(e => console.log("❌ Sheet error", e));
+  .catch(e => console.log("Sheet error", e));
 
 
-// ========= SEARCH =========
+// ===== SEARCH =====
 if (modelSearch) {
   modelSearch.addEventListener("input", () => {
     const val = modelSearch.value.toLowerCase();
@@ -45,10 +43,9 @@ if (modelSearch) {
       div.innerText = `${p.model} - ₹${p.price}`;
 
       div.onclick = () => {
-        model.value = p.model;
-        price.value = p.price;
         modelSearch.value = p.model;
         suggestions.style.display = "none";
+        addFromSearch(p.model, p.price);
       };
 
       suggestions.appendChild(div);
@@ -59,63 +56,30 @@ if (modelSearch) {
 }
 
 
-// ========= SPECIAL =========
-if (specialEnable) {
-  specialEnable.onchange = () => {
-    specialAmt.disabled = !specialEnable.checked;
-    calculate();
-  };
-}
-
-if (paymentMode) paymentMode.onchange = calculate;
-if (comboEnable) comboEnable.onchange = calculate;
+// ===== ADD PRODUCT =====
+window.addFromSearch = (model, price) => {
+  cart.push({ model, price, qty: 1 });
+  render();
+};
 
 
-// ========= ADD PRODUCT =========
-if (addBtn) {
-  addBtn.onclick = () => {
-    if (!model.value || !price.value) return;
-
-    cart.push({
-      model: model.value,
-      mrp: Number(price.value),
-      qty: 1
-    });
-
-    model.value = "";
-    price.value = "";
-    render();
-  };
-}
-
-
-// ========= RENDER =========
+// ===== RENDER CART =====
 function render() {
   cartBody.innerHTML = "";
 
-  const orderValue = cart.reduce((s,p)=>s+p.mrp*p.qty,0);
-  const totalDiscount = getTotalDiscount(orderValue);
-
-  cart.forEach((p,i)=>{
-    const itemValue = p.mrp*p.qty;
-    const share = orderValue ? itemValue/orderValue : 0;
-    const itemDisc = totalDiscount*share;
-    const unitOffer = p.mrp - (itemDisc/p.qty);
-    const percent = itemValue ? (itemDisc/itemValue)*100 : 0;
-
+  cart.forEach((p, i) => {
     cartBody.innerHTML += `
       <tr>
         <td>${p.model}</td>
-        <td>₹${p.mrp}</td>
-        <td>₹${itemDisc.toFixed(0)} <div class="small">${percent.toFixed(1)}%</div></td>
-        <td>₹${unitOffer.toFixed(0)}</td>
+        <td>₹${p.price}</td>
         <td>
-          <input class="qty" type="number" min="1"
-            value="${p.qty}"
+          <input type="number" value="${p.qty}" min="1"
             onchange="updateQty(${i}, this.value)">
         </td>
-        <td>₹${(unitOffer*p.qty).toFixed(0)}</td>
-        <td><button onclick="removeItem(${i})">❌</button></td>
+        <td>₹${p.price * p.qty}</td>
+        <td>
+          <button onclick="removeItem(${i})">❌</button>
+        </td>
       </tr>
     `;
   });
@@ -123,18 +87,18 @@ function render() {
   calculate();
 }
 
-window.updateQty = (i,val)=>{
+window.updateQty = (i, val) => {
   cart[i].qty = Number(val);
   calculate();
 };
 
-window.removeItem = (i)=>{
-  cart.splice(i,1);
+window.removeItem = (i) => {
+  cart.splice(i, 1);
   render();
 };
 
 
-// ========= SLAB =========
+// ===== SLAB =====
 function slabDiscount(total){
   if(total>=20000) return {web:1000,upi:500};
   if(total>=15000) return {web:700,upi:300};
@@ -144,24 +108,39 @@ function slabDiscount(total){
   return {web:0,upi:0};
 }
 
-function getTotalDiscount(total){
-  const slab = slabDiscount(total);
-  const upi = paymentMode.value==="UPI"?slab.upi:0;
-  const combo = (comboEnable.checked && cart.length===2 && cart.every(p=>p.mrp>=5000))
-    ? total*0.03 : 0;
-  const special = specialEnable.checked ? Number(specialAmt.value||0) : 0;
-  return slab.web + upi + combo + special;
-}
 
-
-// ========= CALC =========
+// ===== CALCULATE =====
 function calculate(){
-  const total = cart.reduce((s,p)=>s+p.mrp*p.qty,0);
-  const disc = getTotalDiscount(total);
+  const total = cart.reduce((s,p)=>s+p.price*p.qty,0);
+  const slab = slabDiscount(total);
 
-  orderVal.innerText = "₹"+total.toFixed(0);
-  totalSave.innerText = "₹"+disc.toFixed(0);
-  finalPay.innerText = "₹"+Math.max(0,total-disc).toFixed(0);
+  const upi = paymentMode.value==="UPI" ? slab.upi : 0;
+
+  const combo =
+    comboEnable.checked &&
+    cart.length === 2 &&
+    cart.every(p => p.price >= 5000)
+      ? total * 0.03 : 0;
+
+  const special =
+    specialEnable.checked ? Number(specialAmt.value||0) : 0;
+
+  const save = slab.web + upi + combo + special;
+
+  orderValue.innerText = "₹" + total.toFixed(0);
+  webDisc.innerText = "₹" + slab.web;
+  upiDisc.innerText = "₹" + upi;
+  totalSavings.innerText = "₹" + save.toFixed(0);
+  finalPay.innerText = "₹" + Math.max(0,total-save).toFixed(0);
 }
+
+
+// ===== HOOK CHECKBOXES =====
+paymentMode.onchange = calculate;
+comboEnable.onchange = calculate;
+specialEnable.onchange = () => {
+  specialAmt.disabled = !specialEnable.checked;
+  calculate();
+};
 
 });
