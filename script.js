@@ -112,12 +112,25 @@ function calculate(){
   const originalTotal = cart.reduce((s,p)=>s+p.price*p.qty,0);
 
   // COMBO FIRST
-  let comboDisc = 0;
-  if(comboEnable.checked){
-    cart.forEach(p=>{
-      if(p.combo) comboDisc += p.price*p.qty*0.03;
-    });
-  }
+let comboDisc = 0;
+
+if(comboEnable.checked){
+  cart.forEach(p=>{
+    if(p.combo) comboDisc += p.price*p.qty*0.03;
+  });
+}
+
+comboDisc = Math.round(comboDisc);
+
+if(comboDisc>0){
+  comboRow.style.display="flex";
+  comboDiscEl.innerText = "₹"+comboDisc;
+}else{
+  comboRow.style.display="none";
+  const comboDiscEl = document.getElementById("comboDisc");
+
+}
+
 
   const afterCombo = originalTotal - comboDisc;
 
@@ -128,13 +141,13 @@ function calculate(){
   // SPECIAL
   const special = specialEnable.checked ? +specialAmt.value||0 : 0;
 
-  const save = comboDisc + s.web + upi + special;
+if(special>0){
+  specialRow.style.display="flex";
+  specialDisc.innerText="₹"+special;
+}else{
+  specialRow.style.display="none";
+}
 
-  orderValue.innerText="₹"+originalTotal.toFixed(0);
-  webDisc.innerText="₹"+s.web;
-  upiDisc.innerText="₹"+upi;
-  totalSavings.innerText="₹"+save.toFixed(0);
-  finalPay.innerText="₹"+Math.max(0,originalTotal-save).toFixed(0);
 
   // hide UPI row
   upiDisc.parentElement.style.display =
@@ -152,33 +165,50 @@ specialEnable.onchange=()=>{
 
 
 // ================= SCREENSHOT =================
-document.getElementById("copyScreenshot").onclick=()=>{
-  html2canvas(document.querySelector(".card")).then(canvas=>{
-    const a=document.createElement("a");
-    a.download="offer.png";
-    a.href=canvas.toDataURL();
-    a.click();
+copyScreenshot.onclick = async () => {
+
+  // create offer id
+  const id = generateOfferId();
+  offerId.innerText = id;
+
+  // validity 24h
+  const d = new Date(Date.now() + 24*60*60*1000);
+  validTill.innerText = d.toLocaleString();
+
+  await calculate(); // refresh numbers
+
+  html2canvas(document.getElementById("offerArea")).then(async canvas => {
+    const blob = await new Promise(res => canvas.toBlob(res));
+    await navigator.clipboard.write([
+      new ClipboardItem({ "image/png": blob })
+    ]);
+    alert("Screenshot copied to clipboard");
   });
 };
 
 
+
 // ================= COPY SUMMARY =================
-document.getElementById("copySummary").onclick=()=>{
-  const text=
-`Sales: ${salesInput.value}
+copySummary.onclick = ()=>{
+  const text = `
+Offer ID: ${offerId.innerText}
+Valid Till: ${validTill.innerText}
+
+Sales: ${salesPerson.value}
 Customer: ${customerName.value}
-Mobile: ${mobile.value}
+Mobile: ${customerMobile.value}
 
 Order: ${orderValue.innerText}
 Website: ${webDisc.innerText}
 UPI: ${upiDisc.innerText}
-Savings: ${totalSavings.innerText}
-Pay: ${finalPay.innerText}`;
+Combo: ${comboDiscEl.innerText}
+Special: ${specialDisc.innerText}
 
+Final Payable: ${finalPay.innerText}
+`;
   navigator.clipboard.writeText(text);
-  alert("Copied");
+  alert("Summary copied");
 };
-
 
 // ================= CLEAR =================
 document.getElementById("clearCart").onclick=()=>{
@@ -189,3 +219,11 @@ document.getElementById("clearCart").onclick=()=>{
 document.getElementById("clearAll").onclick=()=>location.reload();
 
 });
+
+function generateOfferId(){
+  const t = Date.now().toString().slice(-6);
+  return "HH-" + t;
+}
+
+
+
